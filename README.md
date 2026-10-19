@@ -10,7 +10,7 @@ Template workshop vibe coding Creative Hub App Talent (CHAT) 2026. Repo ini beri
 2. **Buat proyek Supabase.** Masuk ke [supabase.com](https://supabase.com) dengan akun GitHub, lalu buat proyek baru. Simpan password database di tempat aman.
 3. **Siapkan database.** Di Supabase, buka **SQL Editor**, tempel seluruh isi `docs/schema.sql`, lalu klik **Run**. Tabel `produk` beserta data awal akan terbentuk.
 4. **Siapkan akun admin.** Ikuti panduan akun admin yang dibagikan mentor. Setelah itu matikan pendaftaran akun baru di **Authentication > Sign In / Providers**.
-5. **Isi environment variable di Vercel.** Buka proyekmu di Vercel > **Settings > Environment Variables**, lalu isi tiga variabel dari `.env.example`. Nilainya ada di Supabase > **Project Settings > API**. Setelah itu lakukan **Redeploy**.
+5. **Isi environment variable di Vercel.** Buka proyekmu di Vercel > **Settings > Environment Variables**, lalu isi variabel dari `.env.example`. Nilai variabel Supabase ada di Supabase > **Project Settings > API**. Untuk fitur deskripsi AI (US-14), buat Gemini API key di Google AI Studio dan isi `GEMINI_API_KEY`. Setelah itu lakukan **Redeploy**.
 6. **Clone repo ke laptop.**
 
    ```bash
@@ -19,7 +19,7 @@ Template workshop vibe coding Creative Hub App Talent (CHAT) 2026. Repo ini beri
    npm install
    ```
 
-7. **Buat file `.env.local`.** Salin `.env.example` menjadi `.env.local`, lalu isi dengan nilai yang sama seperti di Vercel.
+7. **Buat file `.env.local`.** Salin `.env.example` menjadi `.env.local`, lalu isi dengan nilai yang sama seperti di Vercel, termasuk `GEMINI_API_KEY` jika menggunakan fitur deskripsi AI.
 8. **Jalankan di laptop.**
 
    ```bash

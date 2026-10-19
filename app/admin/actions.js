@@ -22,6 +22,99 @@ export async function pastikanAdmin() {
 }
 
 /**
+ * Server Action untuk membuat deskripsi produk dengan Gemini (US-14)
+ */
+export async function buatDeskripsiDenganAI(nama, kategori) {
+  const auth = await pastikanAdmin();
+  if (!auth) {
+    return { error: "Sesi telah berakhir. Silakan login kembali." };
+  }
+
+  const namaProduk = typeof nama === "string" ? nama.trim() : "";
+  const kategoriProduk = typeof kategori === "string" ? kategori.trim() : "";
+
+  if (!namaProduk || !kategoriProduk) {
+    return { error: "Isi nama dan kategori produk terlebih dahulu." };
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      error:
+        "Fitur AI belum dikonfigurasi. Tambahkan GEMINI_API_KEY di .env.local dan Vercel.",
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Buat deskripsi produk singkat dalam bahasa Indonesia berdasarkan nama dan kategori berikut. Tulis 2-3 kalimat yang menarik dan faktual. Jangan mengarang spesifikasi atau klaim yang tidak diberikan. Berikan hanya deskripsinya, tanpa judul atau tanda kutip.\nNama produk: ${namaProduk}\nKategori: ${kategoriProduk}`,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
+  } catch {
+    return {
+      error:
+        "Tidak dapat terhubung ke layanan AI. Periksa koneksi server lalu coba lagi.",
+    };
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      return {
+        error:
+          "Kunci Gemini API tidak valid atau tidak memiliki akses. Periksa GEMINI_API_KEY di environment variable.",
+      };
+    }
+    if (response.status === 429) {
+      return {
+        error: "Kuota Gemini API sedang habis. Coba lagi beberapa saat lagi.",
+      };
+    }
+    return {
+      error: "Layanan AI gagal membuat deskripsi. Coba lagi beberapa saat lagi.",
+    };
+  }
+
+  let hasil;
+  try {
+    hasil = await response.json();
+  } catch {
+    return { error: "Layanan AI mengirim respons yang tidak bisa dibaca." };
+  }
+
+  const deskripsi = hasil?.candidates?.[0]?.content?.parts
+    ?.map((bagian) => bagian.text)
+    .filter((teks) => typeof teks === "string")
+    .join("\n")
+    .trim();
+
+  if (!deskripsi) {
+    return {
+      error: "Layanan AI tidak menghasilkan deskripsi. Ubah nama produk lalu coba lagi.",
+    };
+  }
+
+  return { deskripsi };
+}
+
+/**
  * Server Action untuk login admin memakai Supabase Auth
  */
 export async function masuk(prevState, formData) {
