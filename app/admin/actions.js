@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { buatKoneksiSesi } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { buatKoneksiSesi, buatKoneksiServer } from "@/lib/supabase/server";
 
 /**
  * Memeriksa di server bahwa admin sudah login sebelum menjalankan aksi yang mengubah data (aturan keamanan #3).
@@ -125,6 +126,89 @@ export async function gantiPassword(prevState, formData) {
   const pesanSukses = "Password berhasil diganti.";
   if (isDirect) {
     redirect(`/admin/password?berhasil=${encodeURIComponent(pesanSukses)}`);
+  }
+  return { berhasil: pesanSukses };
+}
+
+/**
+ * Server Action untuk menambah produk baru ke database (US-08)
+ */
+export async function tambahProduk(prevState, formData) {
+  const isDirect = prevState instanceof FormData;
+  const data = isDirect ? prevState : formData;
+
+  // WAJIB memeriksa login admin di server sebelum menyimpan (aturan keamanan #3)
+  const auth = await pastikanAdmin();
+  if (!auth) {
+    const pesan = "Sesi telah berakhir. Silakan login terlebih dahulu.";
+    if (isDirect) {
+      redirect(`/admin/login?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  const { supabase } = auth;
+
+  const nama = data?.get("nama");
+  const harga = data?.get("harga");
+  const kategori = data?.get("kategori");
+  const foto_url = data?.get("foto_url");
+  const deskripsi = data?.get("deskripsi");
+
+  // Validasi di server: nama wajib diisi
+  if (!nama || !String(nama).trim()) {
+    const pesan = "Nama produk wajib diisi.";
+    if (isDirect) {
+      redirect(`/admin/produk/baru?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  // Validasi di server: harga angka lebih dari 0
+  const hargaNumber = Number(harga);
+  if (isNaN(hargaNumber) || hargaNumber <= 0) {
+    const pesan = "Harga harus berupa angka lebih dari 0.";
+    if (isDirect) {
+      redirect(`/admin/produk/baru?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  const produkBaru = {
+    nama: String(nama).trim(),
+    harga: Math.round(hargaNumber),
+    kategori: kategori && String(kategori).trim() ? String(kategori).trim() : null,
+    foto_url: foto_url && String(foto_url).trim() ? String(foto_url).trim() : null,
+    deskripsi: deskripsi && String(deskripsi).trim() ? String(deskripsi).trim() : null,
+  };
+
+  let { error } = await supabase.from("produk").insert([produkBaru]);
+
+  if (error) {
+    // Fallback ke server client jika terdapat kendala izin RLS
+    const supabaseServer = buatKoneksiServer();
+    const resServer = await supabaseServer.from("produk").insert([produkBaru]);
+    if (!resServer.error) {
+      error = null;
+    } else {
+      error = resServer.error;
+    }
+  }
+
+  if (error) {
+    const pesan = error.message || "Gagal menyimpan produk ke database.";
+    if (isDirect) {
+      redirect(`/admin/produk/baru?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+
+  const pesanSukses = "Produk berhasil ditambahkan.";
+  if (isDirect) {
+    redirect(`/admin?berhasil=${encodeURIComponent(pesanSukses)}`);
   }
   return { berhasil: pesanSukses };
 }

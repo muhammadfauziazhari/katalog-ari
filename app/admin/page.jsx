@@ -6,7 +6,7 @@ import { buatKoneksiSesi, buatKoneksiServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function HalamanAdmin() {
+export default async function HalamanAdmin({ searchParams }) {
   // Pastikan admin sudah login
   const supabaseSesi = await buatKoneksiSesi();
   const {
@@ -16,6 +16,9 @@ export default async function HalamanAdmin() {
   if (!user) {
     redirect("/admin/login");
   }
+
+  const params = await searchParams;
+  const pesanBerhasil = params?.berhasil;
 
   let daftarProduk = [];
   let pesanError = null;
@@ -57,6 +60,12 @@ export default async function HalamanAdmin() {
         {/* US-08 (bonus): tambah produk */}
         <Tombol href="/admin/produk/baru">Tambah produk</Tombol>
       </div>
+
+      {pesanBerhasil && (
+        <div className="rounded-lg border border-garis bg-permukaan p-3 text-sm font-semibold text-utama">
+          {pesanBerhasil}
+        </div>
+      )}
 
       {pesanError ? (
         <div className="rounded-xl border border-garis bg-permukaan p-4 text-bahaya">
