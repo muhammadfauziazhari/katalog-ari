@@ -313,8 +313,68 @@ export async function ubahProduk(prevState, formData) {
   return { berhasil: pesanSukses };
 }
 
+/**
+ * Server Action untuk menghapus produk dari database (US-10)
+ */
+export async function hapusProduk(prevState, formData) {
+  const isDirect = prevState instanceof FormData;
+  const data = isDirect ? prevState : formData;
+
+  // WAJIB memeriksa login admin di server sebelum menghapus (aturan keamanan #3)
+  const auth = await pastikanAdmin();
+  if (!auth) {
+    const pesan = "Sesi telah berakhir. Silakan login kembali.";
+    if (isDirect) {
+      redirect(`/admin/login?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  const { supabase } = auth;
+  const id = data?.get("id");
+
+  if (!id) {
+    const pesan = "ID produk tidak valid.";
+    if (isDirect) {
+      redirect(`/admin?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  let { error } = await supabase.from("produk").delete().eq("id", id);
+
+  if (error) {
+    // Fallback ke server client jika terdapat kendala izin RLS
+    const supabaseServer = buatKoneksiServer();
+    const resServer = await supabaseServer.from("produk").delete().eq("id", id);
+    if (!resServer.error) {
+      error = null;
+    } else {
+      error = resServer.error;
+    }
+  }
+
+  if (error) {
+    const pesan = error.message || "Gagal menghapus produk dari database.";
+    if (isDirect) {
+      redirect(`/admin?error=${encodeURIComponent(pesan)}`);
+    }
+    return { error: pesan };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+
+  const pesanSukses = "Produk berhasil dihapus.";
+  if (isDirect) {
+    redirect(`/admin?berhasil=${encodeURIComponent(pesanSukses)}`);
+  }
+  return { berhasil: pesanSukses };
+}
+
 export const login = masuk;
 export const logout = keluar;
 export const ubahPassword = gantiPassword;
 export const updatePassword = gantiPassword;
 export const editProduk = ubahProduk;
+export const deleteProduk = hapusProduk;

@@ -19,9 +19,9 @@ export default async function HalamanAdmin({ searchParams }) {
 
   const params = await searchParams;
   const pesanBerhasil = params?.berhasil;
+  let pesanError = params?.error || null;
 
   let daftarProduk = [];
-  let pesanError = null;
 
   try {
     let { data, error } = await supabaseSesi
@@ -40,7 +40,7 @@ export default async function HalamanAdmin({ searchParams }) {
       if (!resServer.error) {
         data = resServer.data;
         error = null;
-      } else {
+      } else if (!pesanError) {
         pesanError = error.message || resServer.error.message;
       }
     }
@@ -49,7 +49,9 @@ export default async function HalamanAdmin({ searchParams }) {
       daftarProduk = data || [];
     }
   } catch (err) {
-    pesanError = err.message || "Terjadi kesalahan saat memuat data produk.";
+    if (!pesanError) {
+      pesanError = err.message || "Terjadi kesalahan saat memuat data produk.";
+    }
   }
 
   return (
@@ -69,7 +71,7 @@ export default async function HalamanAdmin({ searchParams }) {
 
       {pesanError ? (
         <div className="rounded-xl border border-garis bg-permukaan p-4 text-bahaya">
-          <p className="font-semibold">Gagal memuat produk</p>
+          <p className="font-semibold">Terjadi kesalahan</p>
           <p className="mt-1 text-sm text-teks-lembut">{pesanError}</p>
         </div>
       ) : daftarProduk.length === 0 ? (
