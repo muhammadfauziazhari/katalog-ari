@@ -4,6 +4,23 @@ import { redirect } from "next/navigation";
 import { buatKoneksiSesi } from "@/lib/supabase/server";
 
 /**
+ * Memeriksa di server bahwa admin sudah login sebelum menjalankan aksi yang mengubah data (aturan keamanan #3).
+ */
+export async function pastikanAdmin() {
+  const supabase = await buatKoneksiSesi();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return { supabase, user };
+}
+
+/**
  * Server Action untuk login admin memakai Supabase Auth
  */
 export async function masuk(prevState, formData) {
@@ -62,20 +79,17 @@ export async function gantiPassword(prevState, formData) {
   const passwordBaru = data?.get("password_baru");
   const konfirmasiPassword = data?.get("konfirmasi_password");
 
-  // Periksa autentikasi di server
-  const supabase = await buatKoneksiSesi();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
+  // Periksa autentikasi di server sebelum mengubah data (aturan keamanan #3)
+  const auth = await pastikanAdmin();
+  if (!auth) {
     const pesan = "Sesi telah berakhir. Silakan login terlebih dahulu.";
     if (isDirect) {
       redirect(`/admin/login?error=${encodeURIComponent(pesan)}`);
     }
     return { error: pesan };
   }
+
+  const { supabase } = auth;
 
   // Validasi password baru minimal 8 karakter
   if (!passwordBaru || String(passwordBaru).length < 8) {
